@@ -1,2 +1,1 @@
-# wallpaper-picbed
-Personal wallpaper image bed
+https://mankaloho.github.io/wallpaper-picbed 访问你的网站。
