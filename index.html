@@ -16,13 +16,13 @@
     <h1>二次元动漫壁纸图床 & 接口</h1>
     <div class="api-desc">
         <p><strong>1. 随机获取一张动漫壁纸（直接返回图片）</strong><br>
-        调用地址：<a href="?type=random" class="api-link">https://mankaloho.github.io/wallpaper-picbed?type=random</a></p>
+        调用地址：<a href="?type=random" class="api-link">https://api.tengyuesj.cn?type=random</a></p>
         
         <p><strong>2. 随机壁纸接口（返回JSON数据）</strong><br>
-        调用地址：<a href="?type=random&format=json" class="api-link">https://mankaloho.github.io/wallpaper-picbed?type=random&format=json</a></p>
+        调用地址：<a href="?type=random&format=json" class="api-link">https://api.tengyuesj.cn?type=random&format=json</a></p>
         
         <p><strong>3. 获取所有动漫壁纸列表（JSON）</strong><br>
-        调用地址：<a href="?type=list&format=json" class="api-link">https://mankaloho.github.io/wallpaper-picbed?type=list&format=json</a></p>
+        调用地址：<a href="?type=list&format=json" class="api-link">https://api.tengyuesj.cn?type=list&format=json</a></p>
     </div>
 
     <script>
@@ -31,7 +31,7 @@
         const apiType = urlParams.get('type'); // 接口类型：random(随机图)、list(列表)
         const returnFormat = urlParams.get('format'); // 返回格式：json(数据)、空(直接返回图片/网页)
 
-        // 固定请求二次元壁纸文件夹（2025文件夹）
+        // 固定请求二次元壁纸文件夹（2025文件夹，此地址无需改）
         const fetchUrl = 'https://api.github.com/repos/MANKALOHO/wallpaper-picbed/contents/2025';
 
         fetch(fetchUrl)
@@ -42,7 +42,8 @@
                     .filter(file => file.type === 'file' && /\.(png|jpg|jpeg|webp)$/i.test(file.name))
                     .map(file => ({
                         wallpaperName: file.name, // 壁纸名称
-                        wallpaperUrl: `https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/${file.path}`, // 壁纸直链
+                        // 图片CDN直链（保留jsDelivr，无需改，和自定义域名无关）
+                        wallpaperUrl: `https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/${file.path}`,
                         fileSize: (file.size / 1024).toFixed(2) + 'KB', // 文件大小
                         updateTime: new Date(file.last_modified).toLocaleDateString() // 最后更新时间
                     }));
@@ -98,10 +99,14 @@
                 }
             })
             .catch(err => {
+                // 兼容无SSL的错误提示（若http访问报mixed content，可看这里）
+                const errorMsg = err.message.includes('mixed content') 
+                    ? '接口请求失败：当前为HTTP访问，建议开启SSL（HTTPS）以兼容CDN资源'
+                    : err.message;
                 document.write(JSON.stringify({
                     code: 500,
                     message: '接口请求失败',
-                    error: err.message
+                    error: errorMsg
                 }, null, 2));
             });
     </script>
