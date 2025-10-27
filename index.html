@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>壁纸图床</title>
+    <style>
+        body { margin: 20px; background: #f5f5f5; font-family: sans-serif; }
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .image-item { border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .image-item img { width: 100%; height: 180px; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <h1>壁纸图床（2025）</h1>
+    <div class="image-grid" id="imageContainer"></div>
+
+    <script>
+        // 加载仓库中2025文件夹下的图片
+        fetch('https://api.github.com/repos/MANKALOHO/wallpaper-picbed/contents/2025')
+            .then(res => res.json())
+            .then(files => {
+                const container = document.getElementById('imageContainer');
+                files.forEach(file => {
+                    if (file.type === 'file' && /\.(png|jpg|jpeg|webp)$/i.test(file.name)) {
+                        const item = document.createElement('div');
+                        item.className = 'image-item';
+                        item.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/${file.path}" alt="${file.name}">`;
+                        container.appendChild(item);
+                    }
+                });
+            });
+    </script>
+</body>
+</html>
