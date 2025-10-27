@@ -3,32 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>壁纸图床</title>
+    <title>二次元动漫壁纸接口</title>
     <style>
-        body { margin: 20px; background: #f5f5f5; font-family: sans-serif; }
-        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-        .image-item { border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .image-item img { width: 100%; height: 180px; object-fit: cover; }
+        body { margin: 2rem; font-family: sans-serif; background: #f8f9fa; }
+        h1 { color: #333; }
+        .api-desc { margin: 1rem 0; padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .api-link { color: #0969da; text-decoration: none; font-weight: 500; }
+        .api-link:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <h1>壁纸图床（2025）</h1>
-    <div class="image-grid" id="imageContainer"></div>
+    <h1>二次元动漫壁纸图床 & 接口</h1>
+    <div class="api-desc">
+        <p><strong>1. 随机获取一张动漫壁纸（直接返回图片）</strong><br>
+        调用地址：<a href="?type=random" class="api-link">https://mankaloho.github.io/wallpaper-picbed?type=random</a></p>
+        
+        <p><strong>2. 随机壁纸接口（返回JSON数据）</strong><br>
+        调用地址：<a href="?type=random&format=json" class="api-link">https://mankaloho.github.io/wallpaper-picbed?type=random&format=json</a></p>
+        
+        <p><strong>3. 获取所有动漫壁纸列表（JSON）</strong><br>
+        调用地址：<a href="?type=list&format=json" class="api-link">https://mankaloho.github.io/wallpaper-picbed?type=list&format=json</a></p>
+    </div>
 
     <script>
-        // 加载仓库中2025文件夹下的图片
-        fetch('https://api.github.com/repos/MANKALOHO/wallpaper-picbed/contents/2025')
+        // 解析接口参数（优化命名：type=类型，format=返回格式）
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiType = urlParams.get('type'); // 接口类型：random(随机图)、list(列表)
+        const returnFormat = urlParams.get('format'); // 返回格式：json(数据)、空(直接返回图片/网页)
+
+        // 固定请求二次元壁纸文件夹（2025文件夹）
+        const fetchUrl = 'https://api.github.com/repos/MANKALOHO/wallpaper-picbed/contents/2025';
+
+        fetch(fetchUrl)
             .then(res => res.json())
             .then(files => {
-                const container = document.getElementById('imageContainer');
-                files.forEach(file => {
-                    if (file.type === 'file' && /\.(png|jpg|jpeg|webp)$/i.test(file.name)) {
-                        const item = document.createElement('div');
-                        item.className = 'image-item';
-                        item.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/${file.path}" alt="${file.name}">`;
-                        container.appendChild(item);
+                // 筛选动漫图片（保留主流格式）
+                const animeWallpapers = files
+                    .filter(file => file.type === 'file' && /\.(png|jpg|jpeg|webp)$/i.test(file.name))
+                    .map(file => ({
+                        wallpaperName: file.name, // 壁纸名称
+                        wallpaperUrl: `https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/${file.path}`, // 壁纸直链
+                        fileSize: (file.size / 1024).toFixed(2) + 'KB', // 文件大小
+                        updateTime: new Date(file.last_modified).toLocaleDateString() // 最后更新时间
+                    }));
+
+                // 1. 随机壁纸接口（type=random）
+                if (apiType === 'random') {
+                    const randomWallpaper = animeWallpapers[Math.floor(Math.random() * animeWallpapers.length)];
+                    
+                    // 返回JSON格式（format=json）
+                    if (returnFormat === 'json') {
+                        document.write(JSON.stringify({
+                            code: 200,
+                            message: '二次元动漫随机壁纸获取成功',
+                            data: {
+                                壁纸名称: randomWallpaper.wallpaperName,
+                                壁纸直链: randomWallpaper.wallpaperUrl,
+                                文件大小: randomWallpaper.fileSize,
+                                最后更新: randomWallpaper.updateTime
+                            }
+                        }, null, 2));
+                        document.body.style.whiteSpace = 'pre';
+                    } 
+                    // 直接返回图片（默认，可嵌入网页）
+                    else {
+                        window.location.href = randomWallpaper.wallpaperUrl;
                     }
-                });
+                }
+
+                // 2. 壁纸列表接口（type=list）
+                else if (apiType === 'list' && returnFormat === 'json') {
+                    document.write(JSON.stringify({
+                        code: 200,
+                        message: '二次元动漫壁纸列表获取成功',
+                        totalCount: animeWallpapers.length, // 壁纸总数
+                        wallpaperList: animeWallpapers // 壁纸列表
+                    }, null, 2));
+                    document.body.style.whiteSpace = 'pre';
+                }
+
+                // 3. 默认网页（无参数时展示）
+                else {
+                    document.querySelector('.api-desc').insertAdjacentHTML('afterend', `
+                        <h2>壁纸预览（共 ${animeWallpapers.length} 张）</h2>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+                            ${animeWallpapers.map(wp => `
+                                <div style="background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
+                                    <img src="${wp.wallpaperUrl}" style="width: 100%; height: 300px; object-fit: cover;" alt="${wp.wallpaperName}">
+                                    <div style="padding: 0.8rem; font-size: 0.9rem; color: #666;">${wp.wallpaperName}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `);
+                }
+            })
+            .catch(err => {
+                document.write(JSON.stringify({
+                    code: 500,
+                    message: '接口请求失败',
+                    error: err.message
+                }, null, 2));
             });
     </script>
 </body>
