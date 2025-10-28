@@ -1,5 +1,5 @@
 # 二次元动漫壁纸API接口 🎨
-一个基于GitHub Pages + jsDelivr的免费二次元动漫壁纸接口，支持随机获取、列表查询等功能，适用于博客、小程序、网页等场景。
+一个基于GitHub Pages   jsDelivr的免费二次元动漫壁纸接口，支持随机获取、列表查询等功能，适用于博客、小程序、网页等场景。
 
 ## 🌟 功能特点
 - ✅ 随机获取二次元动漫壁纸（直接返回图片/JSON数据）
@@ -11,16 +11,4 @@
 | 接口功能         | 调用地址                                  | 返回格式       |
 |------------------|-------------------------------------------|----------------|
 | 随机获取壁纸（图）| `https://你的域名/?type=random`           | 直接返回图片   |
-| 随机获取壁纸（JSON）| `https://你的域名/?type=random&format=json` | JSON（含图片信息） |
-| 获取壁纸列表     | `https://你的域名/?type=list&format=json`  | JSON（全量列表）|
-
-## 📖 使用示例
-### 1. 网页嵌入随机壁纸
-```html
-<!-- 在网页中插入随机动漫壁纸 -->
-<img src="https://你的域名/?type=random" alt="二次元壁纸" style="width:100%;">
-
-
-
-https://mankaloho.github.io/wallpaper-picbed 访问你的网站。
-（1）
+| 随机获取壁纸（JSON）| `https://你的域名/?type=random
