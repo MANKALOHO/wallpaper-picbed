@@ -1,44 +1,3 @@
-<?php
-// 新增：服务器端优先处理 ?type=random，直接返回HTTP跳转（核心修改）
-if (isset($_GET['type']) && $_GET['type'] === 'random') {
-    // 1. 从GitHub接口获取图片列表（和JS逻辑一致）
-    $githubApi = 'https://api.github.com/repos/MANKALOHO/wallpaper-picbed/contents/2025';
-    $options = [
-        'http' => [
-            'method' => 'GET',
-            'header' => [
-                'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept: application/json'
-            ],
-            'timeout' => 10
-        ],
-        'ssl' => [
-            'verify_peer' => false, // 忽略SSL验证（避免服务器环境问题）
-            'verify_peer_name' => false
-        ]
-    ];
-    $context = stream_context_create($options);
-    $githubResponse = file_get_contents($githubApi, false, $context);
-    $files = json_decode($githubResponse, true);
-
-    // 2. 筛选有效图片并随机选一张（和JS逻辑一致）
-    $validImgs = [];
-    foreach ($files as $file) {
-        if ($file['type'] === 'file' && preg_match('/\.(png|jpg|jpeg|webp)$/i', $file['name'])) {
-            $validImgs[] = "https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/{$file['path']}";
-        }
-    }
-    $randomImg = $validImgs[array_rand($validImgs)] ?? '';
-
-    // 3. 返回HTTP 302跳转（关键：让插件直接拿到图片直链）
-    if (!empty($randomImg)) {
-        header("Location: {$randomImg}"); // 告诉浏览器跳转到图片直链
-        header("HTTP/1.1 302 Temporary Redirect");
-        exit; // 终止后续HTML输出，确保跳转生效
-    }
-}
-?>
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -51,6 +10,10 @@ if (isset($_GET['type']) && $_GET['type'] === 'random') {
         .api-desc { margin: 1rem 0; padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .api-link { color: #0969da; text-decoration: none; font-weight: 500; }
         .api-link:hover { text-decoration: underline; }
+        /* 新增：单张图预览样式 */
+        .single-preview { margin-top: 2rem; text-align: center; }
+        .single-preview img { max-width: 80%; max-height: 80vh; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .single-preview p { margin-top: 1rem; color: #666; font-size: 0.95rem; }
     </style>
 </head>
 <body>
@@ -66,74 +29,102 @@ if (isset($_GET['type']) && $_GET['type'] === 'random') {
         调用地址：<a href="?type=list&format=json" class="api-link">https://api.tengyuesj.cn?type=list&format=json</a></p>
     </div>
 
+    <!-- 新增：单张随机图预览容器（默认隐藏，有参数时显示） -->
+    <div class="single-preview" id="singlePreview" style="display: none;"></div>
+
     <script>
-        // 保留原JS逻辑（兼容浏览器访问，服务器端跳转失败时 fallback）
+        // 解析接口参数
         const urlParams = new URLSearchParams(window.location.search);
-        const apiType = urlParams.get('type');
-        const returnFormat = urlParams.get('format');
+        const apiType = urlParams.get('type'); // random/list
+        const returnFormat = urlParams.get('format'); // json/空
+
+        // GitHub仓库图片文件夹地址（固定）
         const fetchUrl = 'https://api.github.com/repos/MANKALOHO/wallpaper-picbed/contents/2025';
 
-        fetch(fetchUrl)
-            .then(res => res.json())
-            .then(files => {
-                const animeWallpapers = files
-                    .filter(file => file.type === 'file' && /\.(png|jpg|jpeg|webp)$/i.test(file.name))
-                    .map(file => ({
-                        wallpaperName: file.name,
-                        wallpaperUrl: `https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/${file.path}`,
-                        fileSize: (file.size / 1024).toFixed(2) + 'KB',
-                        updateTime: new Date(file.last_modified).toLocaleDateString()
-                    }));
+        // 核心：获取图片列表并处理
+        fetch(fetchUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error(`GitHub接口请求失败，状态码：${res.status}`);
+            return res.json();
+        })
+        .then(files => {
+            // 筛选有效图片（png/jpg/jpeg/webp）
+            const validImgs = files
+                .filter(file => file.type === 'file' && /\.(png|jpg|jpeg|webp)$/i.test(file.name))
+                .map(file => ({
+                    name: file.name,
+                    url: `https://cdn.jsdelivr.net/gh/MANKALOHO/wallpaper-picbed@main/${file.path}`,
+                    size: (file.size / 1024).toFixed(2) + 'KB',
+                    updateTime: new Date(file.last_modified).toLocaleDateString()
+                }));
 
-                if (apiType === 'random') {
-                    const randomWallpaper = animeWallpapers[Math.floor(Math.random() * animeWallpapers.length)];
-                    if (returnFormat === 'json') {
-                        document.write(JSON.stringify({
-                            code: 200,
-                            message: '二次元动漫随机壁纸获取成功',
-                            data: {
-                                壁纸名称: randomWallpaper.wallpaperName,
-                                壁纸直链: randomWallpaper.wallpaperUrl,
-                                文件大小: randomWallpaper.fileSize,
-                                最后更新: randomWallpaper.updateTime
-                            }
-                        }, null, 2));
-                        document.body.style.whiteSpace = 'pre';
-                    } else {
-                        window.location.href = randomWallpaper.wallpaperUrl;
-                    }
-                } else if (apiType === 'list' && returnFormat === 'json') {
+            if (validImgs.length === 0) throw new Error('未找到任何有效图片');
+
+            // 1. 处理 ?type=random（核心：直接跳转/返回JSON/显示单张图）
+            if (apiType === 'random') {
+                const randomImg = validImgs[Math.floor(Math.random() * validImgs.length)];
+                
+                // 1.1 返回JSON（?type=random&format=json）
+                if (returnFormat === 'json') {
+                    document.body.innerHTML = ''; // 清空页面
+                    document.body.style.whiteSpace = 'pre';
                     document.write(JSON.stringify({
                         code: 200,
-                        message: '二次元动漫壁纸列表获取成功',
-                        totalCount: animeWallpapers.length,
-                        wallpaperList: animeWallpapers
+                        message: '随机壁纸获取成功',
+                        data: {
+                            图片名称: randomImg.name,
+                            图片直链: randomImg.url,
+                            文件大小: randomImg.size,
+                            最后更新: randomImg.updateTime
+                        }
                     }, null, 2));
-                    document.body.style.whiteSpace = 'pre';
-                } else {
-                    document.querySelector('.api-desc').insertAdjacentHTML('afterend', `
-                        <h2>壁纸预览（共 ${animeWallpapers.length} 张）</h2>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
-                            ${animeWallpapers.map(wp => `
-                                <div style="background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05);">
-                                    <img src="${wp.wallpaperUrl}" style="width: 100%; height: 300px; object-fit: cover;" alt="${wp.wallpaperName}">
-                                    <div style="padding: 0.8rem; font-size: 0.9rem; color: #666;">${wp.wallpaperName}</div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `);
+                } 
+                // 1.2 直接跳转图片（?type=random，插件调用用这个）
+                else {
+                    window.location.href = randomImg.url; // 前端JS跳转，模拟PHP的302效果
                 }
-            })
-            .catch(err => {
-                const errorMsg = err.message.includes('mixed content') 
-                    ? '接口请求失败：当前为HTTP访问，建议开启SSL（HTTPS）以兼容CDN资源'
-                    : err.message;
+            }
+
+            // 2. 处理 ?type=list&format=json（返回所有图片列表）
+            else if (apiType === 'list' && returnFormat === 'json') {
+                document.body.innerHTML = '';
+                document.body.style.whiteSpace = 'pre';
                 document.write(JSON.stringify({
-                    code: 500,
-                    message: '接口请求失败',
-                    error: errorMsg
+                    code: 200,
+                    message: '图片列表获取成功',
+                    total: validImgs.length,
+                    list: validImgs
                 }, null, 2));
-            });
+            }
+
+            // 3. 无参数/其他参数：显示1张随机图（不显示全部）
+            else {
+                const randomImg = validImgs[Math.floor(Math.random() * validImgs.length)];
+                const previewContainer = document.getElementById('singlePreview');
+                previewContainer.style.display = 'block'; // 显示预览容器
+                // 插入单张图和信息
+                previewContainer.innerHTML = `
+                    <img src="${randomImg.url}" alt="${randomImg.name}">
+                    <p>图片名称：${randomImg.name} | 大小：${randomImg.size} | 最后更新：${randomImg.updateTime}</p>
+                    <p><a href="?type=random" class="api-link">点击获取另一张随机图</a></p>
+                `;
+            }
+        })
+        .catch(err => {
+            // 错误处理（显示友好提示）
+            document.body.innerHTML = `
+                <div style="color: #dc3545; margin-top: 2rem;">
+                    <h3>❌ 接口出错：${err.message}</h3>
+                    <p>建议10秒后重试，或检查GitHub仓库是否正常</p>
+                </div>
+            `;
+            console.error('接口错误详情：', err);
+        });
     </script>
 </body>
 </html>
